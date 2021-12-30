@@ -8,8 +8,12 @@
     "type": "git",
     "url": "https://github.com/minidonut/close-tab"
   },
+  "bin": {
+    "close-tab": "dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
+    "postbuild": ".scripts/postbuild.sh",
     "test": "NODE_ENV=test jest",
     "lint": "eslint . --ext .js,.ts",
     "start": "ts-node src/index.ts",
