@@ -26,21 +26,34 @@ function ids(tabs: string): string[] {
   }, []);
 }
 
-async function main() {
-  const { stdout: original } = await execa(chromeCli, ['list', 'tabs']);
-  const filtered = await vimPrompt(original);
+function printHelp() {
+  console.log(`See https://github.com/minidonut/close-tab#Usage`);
+}
 
-  if (filtered === original) {
-    console.log('aborted. 👋');
-  }
+async function main(command?: string) {
+  if (command == null) {
+    const { stdout: original } = await execa(chromeCli, ['list', 'tabs']);
+    const filtered = await vimPrompt(original);
 
-  const remainedIds = ids(filtered);
-  const toBeDeletedIds = ids(original).filter(id => !remainedIds.includes(id));
+    if (filtered === original) {
+      console.log('aborted. 👋');
+    }
 
-  for (const id of toBeDeletedIds) {
-    await execa(chromeCli, ['info', '-t', id], { stdio: 'inherit' });
-    await execa(chromeCli, ['close', '-t', id]);
+    const remainedIds = ids(filtered);
+    const toBeDeletedIds = ids(original).filter(id => !remainedIds.includes(id));
+
+    for (const id of toBeDeletedIds) {
+      await execa(chromeCli, ['info', '-t', id], { stdio: 'inherit' });
+      await execa(chromeCli, ['close', '-t', id]);
+    }
+  } else if (['version', '--version', '-v'].includes(command)) {
+    const pkgJson = await fs.readJson(path.join(__dirname, '..', 'package.json'));
+    console.log(pkgJson.version);
+  } else if (['help', '--help', '-h'].includes(command)) {
+    printHelp();
+  } else {
+    console.error(`Unknown command: ${command}`);
   }
 }
 
-main();
+main(process.argv[2]);
