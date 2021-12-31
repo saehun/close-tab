@@ -10,9 +10,8 @@ dist
 # Ignore Desktop Service Store
 .DS_Store
 
-# Ignore env
-.env
-.envrc
+# Ignore npmrc
+.npmrc
 
 # Use npm
 yarn.lock
