@@ -8,9 +8,9 @@ const chromeCli = path.join(__dirname, '../bin/chrome-cli');
 async function vimPrompt(text: string): Promise<string> {
   const { name, removeCallback } = tmp.fileSync({ postfix: '.tmp' });
   try {
-    fs.writeFileSync(name, text, { encoding: 'utf-8' });
+    await fs.writeFile(name, text, { encoding: 'utf-8' });
     await execa('vi', [name], { stdio: 'inherit' });
-    return fs.readFileSync(name, 'utf-8');
+    return await fs.readFile(name, 'utf-8');
   } finally {
     removeCallback();
   }
@@ -26,7 +26,7 @@ function ids(tabs: string): string[] {
   }, []);
 }
 
-(async () => {
+async function main() {
   const { stdout: original } = await execa(chromeCli, ['list', 'tabs']);
   const filtered = await vimPrompt(original);
 
@@ -34,11 +34,13 @@ function ids(tabs: string): string[] {
     console.log('aborted. 👋');
   }
 
-  const remained = ids(filtered);
-  const toBeDeleted = ids(original).filter(id => !remained.includes(id));
+  const remainedIds = ids(filtered);
+  const toBeDeletedIds = ids(original).filter(id => !remainedIds.includes(id));
 
-  for (const id of toBeDeleted) {
+  for (const id of toBeDeletedIds) {
     await execa(chromeCli, ['info', '-t', id], { stdio: 'inherit' });
     await execa(chromeCli, ['close', '-t', id]);
   }
-})();
+}
+
+main();

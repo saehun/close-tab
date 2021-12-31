@@ -1,0 +1,10 @@
+{
+  "npmClient": "npm",
+  "command": {
+    "publish": {
+      "ignoreChanges": ["*.md"],
+      "message": "chore: release [skip ci]",
+      "conventionalCommits": true
+    }
+  }
+}
