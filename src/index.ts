@@ -23,8 +23,7 @@ async function vimPrompt(text: string): Promise<string> {
   }
 }
 
-// [1234] ........ => '1234'
-function ids(tabs: string): string[] {
+function findIdsFromRaw(tabs: string): string[] {
   return tabs.split('\n').reduce((acc: string[], n: string) => {
     const parsed = /^\[(\d+?)\]/.exec(n.trim());
     if (parsed) {
@@ -34,15 +33,9 @@ function ids(tabs: string): string[] {
   }, []);
 }
 
-// ......... (1234) => '1234'
-function idsFromLast(tabs: string): string[] {
-  return tabs.split('\n').reduce((acc: string[], n: string) => {
-    const parsed = /\((\d+?)\)$/.exec(n.trim());
-    if (parsed) {
-      acc.push(parsed[1]);
-    }
-    return acc;
-  }, []);
+// naive match ids, there is possibility to match wrong ids
+function findIds(tabs: string): string[] {
+  return (tabs.match(/\(\d+?\)/g) ?? []).map(matched => matched.slice(1, -1));
 }
 
 function printHelp() {
@@ -68,10 +61,21 @@ async function findTab(tabId: string): Promise<Tab> {
 }
 
 function printTabs(tabs: Tab[]): string {
-  return tabs.map(format).sort().join('\n');
+  const grouped = tabs.sort().reduce((map, tab) => {
+    const domain = domainOf(tab.url) || 'about:blank';
 
-  function format(tab: Tab): string {
-    return `[${domainOf(tab.url)}] ${tab.title.slice(0, 140)} (${tab.id})`;
+    if (map.has(domain)) {
+      map.get(domain)!.push(tab);
+    } else {
+      map.set(domain, [tab]);
+    }
+    return map;
+  }, new Map<string, Tab[]>());
+
+  return Array.from(grouped.entries()).map(format).sort().join('\n');
+
+  function format([domain, tabs]: [string, Tab[]]): string {
+    return [`[${domain}]`, ...tabs.map(tab => `- ${tab.title.slice(0, 140)} (${tab.id})`), ''].join('\n');
   }
 
   function domainOf(url: string) {
@@ -82,7 +86,7 @@ function printTabs(tabs: Tab[]): string {
 async function main(command?: string) {
   if (command == null) {
     const { stdout: rawList } = await execa(chromeCli, ['list', 'tabs']);
-    const currentIds = ids(rawList);
+    const currentIds = findIdsFromRaw(rawList);
     const currentTabs = await Promise.all(currentIds.map(findTab));
     const original = printTabs(currentTabs);
 
@@ -93,7 +97,7 @@ async function main(command?: string) {
       process.exit(0);
     }
 
-    const remainedIds = idsFromLast(filtered);
+    const remainedIds = findIds(filtered);
     const toBeDeletedTabs = currentTabs.filter(tab => !remainedIds.includes(tab.id));
 
     for (const tab of toBeDeletedTabs) {
